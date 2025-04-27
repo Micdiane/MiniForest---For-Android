@@ -6,6 +6,7 @@ import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:cross_file/cross_file.dart';
 import 'dart:io';
 import '../providers/focus_provider.dart';
 
@@ -109,6 +110,10 @@ class _FocusPageState extends State<FocusPage> with WidgetsBindingObserver {
     }
   }
 
+  void _navigateBackToForest() {
+    Navigator.pop(context);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<FocusProvider>(
@@ -204,23 +209,36 @@ class _FocusPageState extends State<FocusPage> with WidgetsBindingObserver {
                         ),
                       ),
                       const Spacer(),
-                      ElevatedButton(
-                        onPressed: _canShare ? _captureAndShare : null,
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 30,
-                            vertical: 15,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: const [
-                            Icon(Icons.share),
-                            SizedBox(width: 10),
-                            Text('分享我的专注树'),
+                      if (!provider.isFocusing)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            ElevatedButton.icon(
+                              onPressed: _navigateBackToForest, 
+                              icon: const Icon(Icons.forest),
+                              label: const Text('查看我的森林'),
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 12,
+                                ),
+                              ),
+                            ),
+                            ElevatedButton.icon(
+                              onPressed: _canShare ? _captureAndShare : null,
+                              icon: const Icon(Icons.share),
+                              label: const Text('分享成果'),
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 12,
+                                ),
+                              ),
+                            ),
                           ],
-                        ),
-                      ),
+                        )
+                      else
+                        const SizedBox(height: 60),
                       const SizedBox(height: 20),
                     ],
                   ),

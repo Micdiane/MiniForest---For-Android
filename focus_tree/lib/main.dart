@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'screens/home_page.dart';
+import 'screens/main_screen.dart';
 import 'providers/focus_provider.dart';
 
 void main() {
@@ -15,12 +15,17 @@ class MyApp extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (context) => FocusProvider(),
       child: MaterialApp(
-        title: 'Focus Tree',
+        title: '专注树',
         theme: ThemeData(
           primarySwatch: Colors.green,
           visualDensity: VisualDensity.adaptivePlatformDensity,
+          appBarTheme: const AppBarTheme(
+            centerTitle: true,
+            elevation: 1,
+          ),
         ),
-        home: const HomePage(),
+        home: const MainScreen(),
+        debugShowCheckedModeBanner: false,
       ),
     );
   }
