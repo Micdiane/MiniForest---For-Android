@@ -64,9 +64,9 @@
    - tree_120min.png
    - withered_tree.png
 
-5. 运行应用:
+5. 运行应用: # 目前只添加了web支持
    ```
-   flutter run
+   flutter run -d chrome
    ```
 
 ## 📱 如何使用
