@@ -1,0 +1,167 @@
+# Project: Focus Tree - Android Focus Timer App
+
+**Version:** 1.0
+**Date:** 2023-10-27
+**Target Platform:** Android
+**Development Framework:** Flutter
+
+## 1. Project Overview
+
+Develop a mobile application for Android using Flutter that allows users to set focused work intervals visualized as growing a tree. The core concept is to encourage focus by penalizing distractions (leaving the app or locking the screen causes the tree to "wither"). The app should provide fixed duration options, visualize the remaining time, and allow users to share their success (or failure) via a screenshot.
+
+## 2. Technical Specifications & Stack
+
+*   **Framework:** Flutter (latest stable version)
+*   **Language:** Dart
+*   **UI Toolkit:** Flutter Material Components
+*   **State Management:** `provider` package (or `riverpod` as an alternative)
+*   **Asynchronous Operations:** `dart:async` (specifically `Timer`)
+*   **App Lifecycle Management:** `WidgetsBindingObserver`
+*   **Sharing:** `share_plus` package
+*   **File System:** `path_provider` package (for temporary screenshot storage)
+*   **Screenshotting:** `screenshot` package OR Flutter's built-in `RepaintBoundary` and `dart:ui`.
+*   **Assets:**
+    *   4x "Healthy Tree" images (corresponding to 30, 45, 60, 120 min)
+    *   1x "Withered Tree" image
+    *   Images stored in `assets/images/` and declared in `pubspec.yaml`.
+
+## 3. Core Feature Implementation Plan
+
+### 3.1. Feature: Duration Selection & Focus Initiation
+
+*   **Requirement:** User must be able to select a predefined focus duration (30, 45, 60, 120 minutes) from the main screen to start a focus session.
+*   **Implementation Details:**
+    1.  Create a `HomePage` StatefulWidget.
+    2.  Display four distinct buttons or interactive elements, each representing a duration option (e.g., `ElevatedButton`, `Card` with `InkWell`).
+    3.  Optionally, display a small preview image of the corresponding tree next to each button.
+    4.  On button tap:
+        *   Store the selected `duration` (in minutes) and the corresponding `healthyTreeImagePath` in the application state (using the chosen State Management solution).
+        *   Set initial state variables: `isFocusing = true`, `isWithered = false`, `remainingSeconds = duration * 60`.
+        *   Record `focusStartTime = DateTime.now()`.
+        *   Navigate to the `FocusPage`, passing necessary initial data.
+*   **UI Components:** `Scaffold`, `AppBar`, `Row`/`Column`, `ElevatedButton`/`Card`/`InkWell`, `Text`, `Image.asset`.
+
+### 3.2. Feature: Focus Timer & Tree Growth/Withering Logic
+
+*   **Requirement:** During a focus session, display a countdown timer. If the user leaves the app or locks the screen before the timer completes, the associated tree must visually change to a "withered" state, and the timer should stop. If the timer completes successfully, the tree remains healthy.
+*   **Implementation Details:**
+    1.  Create a `FocusPage` StatefulWidget that implements `WidgetsBindingObserver`.
+    2.  **State:** Manage `remainingSeconds`, `timer` (nullable `Timer`), `isWithered`, `currentTreeImagePath`.
+    3.  **Initialization (`initState`):**
+        *   Register the observer: `WidgetsBinding.instance.addObserver(this);`
+        *   Start the countdown timer:
+            ```dart
+            timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+              if (remainingSeconds > 0) {
+                setState(() {
+                  remainingSeconds--;
+                });
+              } else {
+                // Focus Completed Successfully
+                timer.cancel();
+                setState(() {
+                  isFocusing = false; // Update global state if necessary
+                  // Potentially trigger success animation/feedback
+                });
+                 _activateShareButton(); // Enable sharing
+              }
+            });
+            ```
+    4.  **Lifecycle Management (`didChangeAppLifecycleState`):**
+        ```dart
+        @override
+        void didChangeAppLifecycleState(AppLifecycleState state) {
+          super.didChangeAppLifecycleState(state);
+          // Check if currently in an active focus session and timer is running
+          if (/* check isFocusing state */ && timer != null && timer!.isActive) {
+            if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+               // User left the app or screen locked
+               timer?.cancel();
+               setState(() {
+                 isWithered = true;
+                 currentTreeImagePath = 'assets/images/withered_tree.png'; // Update with withered tree path
+                 isFocusing = false; // Update global state
+                 // Optional: Show failure message
+               });
+               _activateShareButton(); // Enable sharing (of withered tree)
+            }
+          }
+        }
+        ```
+    5.  **Cleanup (`dispose`):**
+        *   Cancel the timer: `timer?.cancel();`
+        *   Remove the observer: `WidgetsBinding.instance.removeObserver(this);`
+    6.  **UI:** Display the `currentTreeImagePath` based on the `isWithered` state.
+*   **UI Components:** `Image.asset`, `Text` (for timer). State management provider/listener.
+
+### 3.3. Feature: Visual Timer Representation
+
+*   **Requirement:** Visually indicate the progress of the focus session beyond just the numerical countdown.
+*   **Implementation Details:**
+    1.  Use a `Text` widget to display `remainingSeconds` formatted as `MM:SS`.
+        *   Helper function: `String formatDuration(int totalSeconds)`
+    2.  Add a `LinearProgressIndicator` or `CircularProgressIndicator`.
+    3.  Calculate progress value: `double progress = (totalDurationInSeconds - remainingSeconds) / totalDurationInSeconds;` (Handle division by zero if `totalDurationInSeconds` is 0).
+    4.  Bind the `value` property of the progress indicator to the calculated `progress`. Update this value within the `setState` call of the timer callback.
+*   **UI Components:** `Text`, `LinearProgressIndicator` / `CircularProgressIndicator`.
+
+### 3.4. Feature: One-Click Screenshot Sharing
+
+*   **Requirement:** Provide a button (ideally on the `FocusPage` after session completion or failure) that captures the current screen (or a specific part of it) and allows the user to share it via the native Android share sheet.
+*   **Implementation Details:**
+    1.  **Screenshot Capture:**
+        *   **Option A (Package):**
+            *   Wrap the relevant UI area (e.g., the entire `Scaffold` body or just the tree and timer area) in a `Screenshot` widget.
+            *   Use a `ScreenshotController`.
+            *   On share button press, call `screenshotController.capture()`.
+        *   **Option B (Manual):**
+            *   Wrap the UI area in a `RepaintBoundary` with a `GlobalKey`.
+            *   On share button press, get the `RenderRepaintBoundary` from the key, call `toImage()`, convert to `ByteData`, then `Uint8List`.
+    2.  **Save Temporary File:**
+        *   Use `path_provider`'s `getTemporaryDirectory()` to get a writable directory.
+        *   Write the captured image bytes (`Uint8List`) to a file (e.g., `screenshot.png`) in the temporary directory.
+    3.  **Initiate Sharing:**
+        *   Use `share_plus`'s `Share.shareXFiles()` method.
+        *   Pass the `XFile` object pointing to the saved temporary image file.
+        *   Include optional `text` (e.g., "I focused for X minutes!") and `subject`.
+    4.  **Button State:** The share button should ideally be disabled until the focus session ends (either successfully or by withering).
+*   **UI Components:** `ElevatedButton` / `IconButton`, `Screenshot` widget (Option A) / `RepaintBoundary` (Option B).
+*   **Libraries:** `screenshot` (if Option A), `path_provider`, `share_plus`.
+
+## 4. Expected Outcome
+
+*   A functional Android application built with Flutter.
+*   Users can smoothly select a focus duration (30, 45, 60, 120 min).
+*   A timer accurately counts down the selected duration.
+*   A visual representation (corresponding tree image) is displayed during focus.
+*   Time progress is visually indicated (e.g., via a progress bar).
+*   Leaving the app or locking the screen during an active session correctly stops the timer and changes the tree image to the "withered" state.
+*   Successful completion of the timer leaves the tree image "healthy".
+*   A share button becomes active upon session completion/failure.
+*   Clicking the share button captures the relevant screen content and opens the native Android share dialog with the image and predefined text.
+
+## 5. Testing Strategy
+
+*   **Unit Tests (Logic):**
+    *   Test the timer formatting function (`formatDuration`).
+    *   Test the initial state setup based on duration selection.
+    *   Mock `Timer` and `WidgetsBindingObserver` to test state changes during countdown and on lifecycle events (success, premature exit/wither).
+*   **Widget Tests (UI & Interaction):**
+    *   Verify that the correct number of duration selection buttons are displayed on `HomePage`.
+    *   Test navigation from `HomePage` to `FocusPage` upon button press.
+    *   Verify that the correct initial tree image and timer value are displayed on `FocusPage`.
+    *   Test that the timer display updates correctly over time (using `tester.pump`).
+    *   Verify the progress indicator updates correctly.
+    *   Test that the share button is initially disabled and becomes enabled at the appropriate time.
+    *   Mock the screenshot and sharing plugins to verify the button triggers the expected function calls.
+*   **Manual/Integration Tests (On Device/Emulator):**
+    *   Perform full focus sessions for each duration.
+    *   Test the app lifecycle interruption:
+        *   Press the Home button during focus.
+        *   Lock the screen during focus.
+        *   Receive a call (if possible in emulator) during focus.
+        *   Verify the tree withers and timer stops in all interruption scenarios.
+    *   Test the screenshot and share functionality thoroughly, ensuring the correct image and text are shared to various target apps (messaging, email, social media).
+    *   Test UI responsiveness on different screen sizes.
+
+    Each time you need update sth , check .gitignore and add items to it

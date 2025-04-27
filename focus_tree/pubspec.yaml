@@ -1,0 +1,26 @@
+name: focus_tree
+description: A Flutter application that allows users to set focused work intervals visualized as growing a tree.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ">=2.17.0 <3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  provider: ^6.0.3
+  path_provider: ^2.0.11
+  share_plus: ^4.0.10
+  screenshot: ^1.2.3
+  cupertino_icons: ^1.0.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/ 
